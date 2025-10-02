@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>StayFinder — My Bookings</title>
+<style>
+  :root{--bg:#061126;--muted:#9aa4b2}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:Inter, system-ui, -apple-system, 'Segoe UI', Roboto, Arial;background:linear-gradient(180deg,#041423,#061126);color:#eaf3ff}
+  header{display:flex;justify-content:space-between;align-items:center;padding:16px 20px}
+  .list{max-width:980px;margin:18px auto;padding:12px;display:grid;gap:12px}
+  .booking{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));padding:12px;border-radius:12px;display:flex;justify-content:space-between;align-items:center}
+  .muted{color:var(--muted);font-size:13px}
+  button.danger{background:transparent;border:1px solid rgba(255,255,255,0.06);padding:8px;border-radius:8px;color:var(--muted);cursor:pointer}
+  footer{padding:24px;text-align:center;color:var(--muted)}
+  .empty{max-width:980px;margin:40px auto;color:var(--muted);text-align:center}
+</style>
+</head>
+<body>
+<header>
+  <div><button onclick="go('index.html')" style="background:transparent;border:0;color:inherit;cursor:pointer">← Home</button></div>
+  <div><button onclick="go('listings.html')" style="background:transparent;border:1px solid rgba(255,255,255,0.06);padding:8px;border-radius:8px;color:var(--muted);cursor:pointer">Browse</button></div>
+</header>
+ 
+<main>
+  <div id="last" style="max-width:980px;margin:0 auto;padding:12px"></div>
+  <div class="list" id="list"></div>
+  <div id="empty" class="empty" style="display:none">You have no bookings yet. Book a stay to see it here.</div>
+</main>
+ 
+<footer>Bookings stored locally on your browser (localStorage).</footer>
+ 
+<script>
+function go(u){ location.href = u; }
+ 
+function render(){
+  const bookings = JSON.parse(localStorage.getItem('sf_bookings')||'[]').slice().reverse();
+  const list = document.getElementById('list');
+  const empty = document.getElementById('empty');
+  const last = JSON.parse(localStorage.getItem('sf_last_confirmation')||'null');
+ 
+  if(last){
+    document.getElementById('last').innerHTML = `
+      <div style="max-width:980px;margin:12px auto;padding:12px;background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));border-radius:10px">
+        <div style="font-weight:800">Latest booking confirmed</div>
+        <div class="muted">${last.propertyTitle} • ${last.checkin} → ${last.checkout} • ${last.nights} night(s) • Total: $${last.total}</div>
+      </div>
+    `;
+    // clear last confirmation so it's not always shown next time (optional)
+    localStorage.removeItem('sf_last_confirmation');
+  }
+ 
+  list.innerHTML = '';
+  if(!bookings.length){ empty.style.display='block'; return; }
+  empty.style.display='none';
+ 
+  bookings.forEach(b=>{
+    const el = document.createElement('div'); el.className='booking';
+    el.innerHTML = `
+      <div>
+        <div style="font-weight:700">${b.propertyTitle}</div>
+        <div class="muted">${b.checkin} → ${b.checkout} • ${b.nights} night(s) • Guests: ${b.guests}</div>
+        <div class="muted">Booked by: ${b.name} • ${b.contact}</div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-weight:800;margin-bottom:6px">$${b.total}</div>
+        <button class="danger" onclick="cancel(${b.id})">Cancel</button>
+      </div>
+    `;
+    list.appendChild(el);
+  });
+}
+ 
+function cancel(id){
+  if(!confirm('Cancel this booking?')) return;
+  let bookings = JSON.parse(localStorage.getItem('sf_bookings')||'[]');
+  bookings = bookings.filter(b=>b.id !== id);
+  localStorage.setItem('sf_bookings', JSON.stringify(bookings));
+  render();
+}
+ 
+render();
+</script>
+</body>
+</html>
