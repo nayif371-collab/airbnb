@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>StayFinder — Listings</title>
+<style>
+  :root{--bg:#061126;--muted:#9aa4b2;--accent1:#06b6d4;--accent2:#10b981}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:Inter, system-ui, -apple-system, 'Segoe UI', Roboto, Arial;background:linear-gradient(180deg,#041423,#061126);color:#eaf3ff}
+  header{display:flex;justify-content:space-between;align-items:center;padding:16px 20px}
+  .brand{display:flex;gap:12px;align-items:center;font-weight:700}
+  .controls{max-width:1100px;margin:0 auto;padding:0 12px;display:flex;gap:12px;align-items:center}
+  .filters{display:flex;gap:10px;flex-wrap:wrap}
+  select,input{background:transparent;border:1px solid rgba(255,255,255,0.06);padding:10px;border-radius:10px;color:inherit}
+  .grid{max-width:1100px;margin:18px auto;display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;padding:0 12px}
+  .card{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));padding:12px;border-radius:12px;box-shadow:0 10px 28px rgba(0,0,0,.6)}
+  .img{height:160px;border-radius:10px;background-size:cover;display:flex;align-items:flex-end;padding:10px;position:relative}
+  .img:after{content:'';position:absolute;inset:0;border-radius:10px;background:linear-gradient(180deg,transparent 40%, rgba(0,0,0,.45))}
+  .muted{color:var(--muted);font-size:13px}
+  .sort{margin-left:auto}
+  footer{padding:24px;text-align:center;color:var(--muted)}
+  @media (max-width:720px){.controls{flex-direction:column;align-items:stretch}}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">← <button onclick="go('index.html')" style="background:transparent;border:0;color:inherit;cursor:pointer">Back</button> &nbsp; StayFinder Listings</div>
+  <div style="display:flex;gap:10px;align-items:center">
+    <button onclick="go('bookings.html')" style="background:transparent;border:1px solid rgba(255,255,255,0.06);padding:8px;border-radius:8px;color:var(--muted);cursor:pointer">My Bookings</button>
+  </div>
+</header>
+ 
+<section class="controls">
+  <div class="filters">
+    <input id="searchInput" placeholder="Search city/title" />
+    <select id="typeFilter">
+      <option value="any">Any type</option>
+      <option value="entire">Entire place</option>
+      <option value="private">Private room</option>
+      <option value="shared">Shared room</option>
+    </select>
+    <select id="priceFilter">
+      <option value="any">Any price</option>
+      <option value="0-30">Under $30</option>
+      <option value="30-60">$30–60</option>
+      <option value="60-9999">Above $60</option>
+    </select>
+  </div>
+  <div class="sort">
+    <select id="sortBy">
+      <option value="recommended">Recommended</option>
+      <option value="price_asc">Price: Low → High</option>
+      <option value="price_desc">Price: High → Low</option>
+      <option value="rating_desc">Top rated</option>
+    </select>
+  </div>
+</section>
+ 
+<section class="grid" id="grid"></section>
+ 
+<footer>Tip: use filters & sort to refine results.</footer>
+ 
+<script>
+function go(u){ location.href = u; }
+const props = JSON.parse(localStorage.getItem('sf_properties')||'[]');
+const rawSearch = JSON.parse(localStorage.getItem('sf_search')||'{}');
+ 
+/* Pre-fill search filters from previous page */
+if(rawSearch){
+  if(rawSearch.q) document.getElementById('searchInput').value = rawSearch.q;
+  if(rawSearch.type) document.getElementById('typeFilter').value = rawSearch.type;
+}
+ 
+/* Render list */
+function render(list){
+  const grid = document.getElementById('grid'); grid.innerHTML='';
+  if(!list.length){ grid.innerHTML = '<div style="color:var(--muted);padding:20px">No properties match your filters.</div>'; return; }
+  list.forEach(p=>{
+    const el = document.createElement('div'); el.className='card';
+    el.innerHTML = `
+      <div class="img" style="background:linear-gradient(135deg, ${p.colors[0]}, ${p.colors[1]})">
+        <div style="width:100%;display:flex;justify-content:space-between;z-index:1">
+          <div style="background:rgba(255,255,255,0.03);padding:6px 10px;border-radius:999px">${p.city}</div>
+          <div style="background:rgba(255,255,255,0.03);padding:6px 10px;border-radius:999px">★ ${p.rating}</div>
+        </div>
+      </div>
+      <div style="margin-top:10px;font-weight:700">${p.title}</div>
+      <div class="muted" style="margin-top:6px">${p.desc}</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px">
+        <div style="font-weight:700">$${p.price}/night</div>
+        <div>
+          <button style="padding:8px 10px;border-radius:8px;border:0;background:linear-gradient(90deg,#06b6d4,#10b981);cursor:pointer" onclick="view(${p.id})">View</button>
+        </div>
+      </div>
+    `;
+    grid.appendChild(el);
+  });
+}
+ 
+function view(id){ localStorage.setItem('sf_view', id); go('property.html'); }
+ 
+/* Filtering & sorting */
+function applyFilters(){
+  let list = props.slice();
+  const q = document.getElementById('searchInput').value.trim().toLowerCase();
+  const type = document.getElementById('typeFilter').value;
+  const price = document.getElementById('priceFilter').value;
+  const sort = document.getElementById('sortBy').value;
+ 
+  if(q) list = list.filter(p => (p.city + ' ' + p.title).toLowerCase().includes(q));
+  if(type !== 'any') list = list.filter(p => p.type === type);
+  if(price !== 'any'){
+    const [min,max] = price.split('-').map(Number);
+    list = list.filter(p => p.price >= min && p.price <= max);
+  }
+  if(sort === 'price_asc') list.sort((a,b)=>a.price-b.price);
+  if(sort === 'price_desc') list.sort((a,b)=>b.price-a.price);
+  if(sort === 'rating_desc') list.sort((a,b)=>b.rating-a.rating);
+ 
+  render(list);
+}
+ 
+/* Event listeners */
+document.getElementById('searchInput').addEventListener('input', applyFilters);
+document.getElementById('typeFilter').addEventListener('change', applyFilters);
+document.getElementById('priceFilter').addEventListener('change', applyFilters);
+document.getElementById('sortBy').addEventListener('change', applyFilters);
+ 
+/* initial */
+applyFilters();
+</script>
+</body>
+</html>
