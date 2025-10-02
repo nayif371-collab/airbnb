@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>StayFinder — Property</title>
+<style>
+  :root{--bg:#061126;--muted:#9aa4b2}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:Inter, system-ui, -apple-system, 'Segoe UI', Roboto, Arial;background:linear-gradient(180deg,#041423,#061126);color:#eaf3ff}
+  header{display:flex;justify-content:space-between;align-items:center;padding:16px 20px}
+  .container{max-width:980px;margin:18px auto;padding:12px}
+  .hero{border-radius:12px;padding:14px;background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));box-shadow:0 10px 30px rgba(0,0,0,.6)}
+  .img{height:320px;border-radius:10px;background-size:cover;margin-bottom:12px;position:relative}
+  .grid{display:grid;grid-template-columns:1fr 320px;gap:14px}
+  .muted{color:var(--muted);font-size:13px}
+  .book-box{background:linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0.01));padding:14px;border-radius:12px}
+  input,select{background:transparent;border:1px solid rgba(255,255,255,0.06);padding:10px;border-radius:8px;color:inherit;width:100%}
+  button.cta{background:linear-gradient(90deg,#06b6d4,#10b981);border:0;padding:10px;border-radius:8px;font-weight:700;cursor:pointer;color:#052;width:100%}
+  footer{padding:24px;text-align:center;color:var(--muted)}
+  @media (max-width:920px){.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header>
+  <div><button onclick="go('listings.html')" style="background:transparent;border:0;color:inherit;cursor:pointer">← Back to listings</button></div>
+  <div><button onclick="go('bookings.html')" style="background:transparent;border:1px solid rgba(255,255,255,0.06);padding:8px;border-radius:8px;color:var(--muted);cursor:pointer">My Bookings</button></div>
+</header>
+ 
+<div class="container">
+  <div class="hero" id="hero">
+    <div class="img" id="heroImg"></div>
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <div style="font-size:20px;font-weight:700" id="pTitle"></div>
+      <div style="font-weight:800" id="pPrice"></div>
+    </div>
+    <div class="muted" id="pMeta" style="margin-top:8px"></div>
+    <p id="pDesc" style="margin-top:12px"></p>
+ 
+    <div class="grid" style="margin-top:14px">
+      <div>
+        <h4 style="margin:0 0 10px 0">Details</h4>
+        <ul id="details" class="muted"></ul>
+      </div>
+ 
+      <div>
+        <div class="book-box">
+          <div style="font-weight:700;margin-bottom:6px">Book this stay</div>
+          <label class="muted">Check-in</label>
+          <input type="date" id="bCheckin">
+          <label class="muted" style="margin-top:8px">Check-out</label>
+          <input type="date" id="bCheckout">
+          <label class="muted" style="margin-top:8px">Guests</label>
+          <select id="bGuests"><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select>
+          <label class="muted" style="margin-top:8px">Full name</label>
+          <input id="bName" placeholder="Your full name">
+          <label class="muted" style="margin-top:8px">Phone / Email</label>
+          <input id="bContact" placeholder="Phone or email">
+          <div style="margin-top:10px"><button class="cta" onclick="bookNow()">Confirm booking</button></div>
+        </div>
+      </div>
+ 
+    </div>
+  </div>
+</div>
+ 
+<footer>Bookings are stored locally (localStorage) for demo purpose.</footer>
+ 
+<script>
+function go(u){ location.href = u; }
+const props = JSON.parse(localStorage.getItem('sf_properties')||'[]');
+const viewId = Number(localStorage.getItem('sf_view') || props[0]?.id);
+const prop = props.find(p=>p.id===viewId) || props[0];
+ 
+function render(){
+  document.getElementById('heroImg').style.background = `linear-gradient(135deg, ${prop.colors[0]}, ${prop.colors[1]})`;
+  document.getElementById('pTitle').textContent = prop.title;
+  document.getElementById('pPrice').textContent = `$${prop.price}/night`;
+  document.getElementById('pMeta').textContent = `${prop.city} • ${prop.type} • accommodates ${prop.guests} guests • ★ ${prop.rating}`;
+  document.getElementById('pDesc').textContent = prop.desc;
+  document.getElementById('details').innerHTML = `
+    <li class="muted">Type: ${prop.type}</li>
+    <li class="muted">Price: $${prop.price} per night</li>
+    <li class="muted">Rating: ${prop.rating}</li>
+    <li class="muted">Max guests: ${prop.guests}</li>
+  `;
+}
+ 
+/* Basic booking validation and storing in localStorage */
+function bookNow(){
+  const checkin = document.getElementById('bCheckin').value;
+  const checkout = document.getElementById('bCheckout').value;
+  const guests = Number(document.getElementById('bGuests').value);
+  const name = document.getElementById('bName').value.trim();
+  const contact = document.getElementById('bContact').value.trim();
+ 
+  if(!checkin || !checkout){ return alert('Please select check-in and check-out dates.'); }
+  if(new Date(checkout) <= new Date(checkin)){ return alert('Check-out must be after check-in.'); }
+  if(!name || !contact) return alert('Please enter your name and contact.');
+ 
+  // compute nights
+  const nights = Math.round((new Date(checkout) - new Date(checkin)) / (1000*60*60*24));
+  const total = (prop.price * nights);
+ 
+  const bookings = JSON.parse(localStorage.getItem('sf_bookings')||'[]');
+  const booking = {
+    id: Date.now(),
+    propertyId: prop.id,
+    propertyTitle: prop.title,
+    checkin, checkout, guests, name, contact, nights, total, createdAt: new Date().toISOString()
+  };
+  bookings.push(booking);
+  localStorage.setItem('sf_bookings', JSON.stringify(bookings));
+ 
+  // store last confirmation to show on bookings page
+  localStorage.setItem('sf_last_confirmation', JSON.stringify(booking));
+ 
+  // show confirmation then redirect to bookings page
+  alert(`Booking confirmed!\n${prop.title}\n${nights} night(s) — Total: $${total}\nYou will be redirected to My Bookings.`);
+  go('bookings.html');
+}
+ 
+render();
+</script>
+</body>
+</html>
